@@ -11,8 +11,12 @@ m对n追捕问题，本意用于产生两队之间追捕、包围等数据集用
 
 ## 文件结构
 ```
-|－－－－－－ pettingzoo 直接使用pettingzoo的环境
-    ｜－－－　ACBasePettingzoo 使用pettingzoo的环境写Actor-Critic
+|--------- 
+    |------ ACBasePettingzoo 使用pettingzoo的环境写Actor-Critic
+    |------ ModifyPettingzoo 修改cam_range为固定值使得障碍物在视觉上也静止
+    |------ pettingzoo 直接使用pettingzoo的环境
+    |------ stable_baseline3 使用stable_baseline3的PPO
+
 ```
 
 ## pettingzoo
@@ -39,6 +43,11 @@ stable_baselines3中有PPO、SAC等模型可直接使用，不像pettingzoo还�
 关键点在于`def step(self, actions):`中的reward函数设计，直接影响动作的收敛。
 
 见`stable_baseline3/ppomvs1.py`
+
+### 目标静止
+见`PPOTargetStatic.py`，目标静止，rewards只有抓捕成功和距离。训练完成后当抓捕者移动到目标附近时一直在徘徊，原因暂未知。
+
+![PPOTargetStatic.py](results/PPOTargetStatic.gif)
 
 ## 问题
 常用的reward有：
