@@ -57,3 +57,7 @@ stable_baselines3中有PPO、SAC等模型可直接使用，不像pettingzoo还�
 * 边界惩罚
 
 但在上述reward作用下，目标容易直奔边界或角落，抓捕者在开始时能够追逐目标，但在靠近后一直保持距离？
+
+```sh
+ffmpeg -framerate 30 -i %04d.png -vf "fps=30,scale=640:-1:flags=lanczos" output.gif
+```
