@@ -13,6 +13,7 @@ m对n追捕问题，本意用于产生两队之间追捕、包围等数据集用
 ```
 |--------- 
     |------ ACBasePettingzoo 使用pettingzoo的环境写Actor-Critic
+    |------ mission 根据任务训练，如巡逻等
     |------ ModifyPettingzoo 修改cam_range为固定值使得障碍物在视觉上也静止
     |------ pettingzoo 直接使用pettingzoo的环境
     |------ stable_baseline3 使用stable_baseline3的PPO
@@ -53,6 +54,11 @@ stable_baselines3中有PPO、SAC等模型可直接使用，不像pettingzoo还�
 见`PPOTargetStatic.py`，目标静止，rewards只有抓捕成功和距离。训练完成后当抓捕者移动到目标附近时一直在徘徊，原因暂未知。
 
 ![PPOTargetStatic.py](results/PPOTargetStatic.gif)
+
+## mission
+见`mission/Surround.py`自定义生成网格地图，想要多个智能体遍历所有网格，但覆盖率只有50%+，一直在重复......
+
+![Surround.py](results/Surround.gif)
 
 ## 问题
 常用的reward有：
