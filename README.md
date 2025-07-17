@@ -37,6 +37,11 @@ pettingzoo的simple_env.py文件draw函数内cam_range随目标运动一直在�
         cam_range = np.max(np.abs(np.array(all_poses))) # camera_range一直在变，改成cam_range = 1.0后视角固定障碍物就不动了
 ```
 
+## Actor-Critic
+见`ActorCritic/maddpg_owncritic.py`使用MADDPG，训练完成后抓捕者和目标均向边界角落移动，且当抓捕者移动到目标附近时一直在徘徊或远离不继续靠近，原因暂未知。
+
+![maddpg_owncritic.py](results/maddpg_owncritic.gif)
+
 ## stable_baselines3
 stable_baselines3中有PPO、SAC等模型可直接使用，不像pettingzoo还需要自行写Actor-Critic。
 
