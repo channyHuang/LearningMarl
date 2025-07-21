@@ -56,9 +56,13 @@ stable_baselines3中有PPO、SAC等模型可直接使用，不像pettingzoo还�
 ![PPOTargetStatic.py](results/PPOTargetStatic.gif)
 
 ## mission
+### 巡逻
 见`mission/Surround.py`自定义生成网格地图，想要多个智能体遍历所有网格，但覆盖率只有50%+，一直在重复......
 
 ![Surround.py](results/Surround.gif)
+### Hunt 
+参考[MADDPG_Multi_UAV_Roundup](https://github.com/reinshift/MADDPG_Multi_UAV_Roundup.git)
+[KF_AA_MARL](https://github.com/reinshift/KF_AA_MARL.git)
 
 ## 问题
 常用的reward有：
@@ -72,3 +76,10 @@ stable_baselines3中有PPO、SAC等模型可直接使用，不像pettingzoo还�
 ```sh
 ffmpeg -framerate 30 -i %04d.png -vf "fps=30,scale=640:-1:flags=lanczos" output.gif
 ```
+
+# 其它第三方库
+* [MAgent](https://github.com/geek-ai/MAgent.git)[MAgent2](https://github.com/Farama-Foundation/MAgent2.git)
+* [multiagent-particle-envs](https://github.com/openai/multiagent-particle-envs)
+* [MARLlib](https://github.com/Replicable-MARL/MARLlib.git)
+* [malib](https://github.com/sjtu-marl/malib.git)
+* [EPymarl](https://github.com/uoe-agents/epymarl.git)
