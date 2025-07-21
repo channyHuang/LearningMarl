@@ -9,8 +9,8 @@ from math_tool import *
 
 class Obstacle():
     def __init__(self, boundary = 2):
-        self.position = np.random.uniform(low = 0.45, high = boundary - 0.45, size = (2, ))
-        self.radius = np.random.uniform(0.1, 0.15)
+        self.position = np.random.uniform(low = 0.25 * boundary, high = boundary * 0.75, size = (2, ))
+        self.radius = np.random.uniform(0.05 * boundary, 0.075 * boundary)
 
 class Env:
     def __init__(self, boundary = 2, 
@@ -24,14 +24,16 @@ class Env:
         self.num_agents = num_agents
         self.num_targets = num_targets
         self.num_lasers = num_lasers
-        self.laser_length = laser_length
-        self.step_length = 0.5
-        self.velocity_max_agent = 0.1
-        self.velocity_max_target = 0.12
-        self.dist_capture = 0.  
+        self.laser_length = laser_length if laser_length is not None else 0.1 * self.boundary
+        self.step_length = 0.25 * self.boundary
+        self.velocity_max_agent = 0.05 * self.boundary
+        self.velocity_max_target = 0.06 * self.boundary
+        self.dist_capture = 0.15 * self.boundary  
 
         self.agents_name = []
         self.action_space = {}
+        # agent: num_features 4 + (num_agents - 1) * 2 + self lasers 16
+        # target: num_
         self.observation_space = {}
         for i in range(self.num_agents):
             if i < self.num_agents - self.num_targets:
@@ -59,13 +61,14 @@ class Env:
         self.history_positions = [[] for _ in range(self.num_agents)]
 
         np.random.seed((int)(time.time()))
+        # [0, self.boundary]
         self.positions = []
         self.velocities = np.zeros((self.num_agents, 2))
         for i in range(self.num_agents):
             if i < self.num_agents - self.num_targets:
-                self.positions.append(np.random.uniform(low = 0.1, high = 0.4, size = (2, )))
+                self.positions.append(np.random.uniform(low = 0.05 * self.boundary, high = 0.2 * self.boundary, size = (2, )))
             else:
-                self.positions.append(np.random.uniform(low = 0.5, high = 1.8, size = (2, )))
+                self.positions.append(np.random.uniform(low = 0.25 * self.boundary, high = 0.9 * self.boundary, size = (2, )))
         self.calCollide()
         observations = self.getObservations()
         return observations
@@ -73,7 +76,7 @@ class Env:
     def getObservations(self):
         observations = []
         observation = []
-        dist_evad = [] 
+        observeTarget = [] 
         for i in range(self.num_agents):
             position = self.positions[i]
             velocity = self.velocities[i]
@@ -91,15 +94,15 @@ class Env:
 
                     dist = np.linalg.norm(position - pos)
                     theta = np.arctan2(position[1] - pos[1], position[0] - pos[0])
-                    status_targets.extend([dist / (2 * self.boundary), theta])
+                    status_targets.extend([dist / (np.sqrt(2) * self.boundary), theta])
                     if i < self.num_agents - self.num_targets:
-                        dist_evad.append(dist / (2 * self.boundary))
+                        observeTarget.append(dist / (np.sqrt(2) * self.boundary))
             # dim = self.num_lasers
             lasers = self.agent_lasers[i]
             if i < self.num_agents - self.num_targets:
                 observation = [status, status_teamers, lasers, status_targets]
             else:
-                observation = [status, lasers, dist_evad]
+                observation = [status, lasers, observeTarget]
             observations.append(list(itertools.chain(*observation)))
         return observations
 
@@ -133,20 +136,21 @@ class Env:
         mu1 = 0.7 # r_near
         mu2 = 0.4 # r_safe
         mu3 = 0.01 # r_multi_stage
-        mu4 = 5 # r_finish
-        d_capture = 0.3
+        ratio_capture = 5 # r_finish
         d_limit = 0.75
+
         ## 1 reward for single rounding-up-UAVs:
-        for i in range(3):
+        for i in range(self.num_agents - self.num_targets):
             pos = self.positions[i]
             vel = self.velocities[i]
-            pos_target = self.positions[-1]
-            v_i = np.linalg.norm(vel)
-            dire_vec = pos_target - pos
-            d = np.linalg.norm(dire_vec) # distance to target
+            velNorm = np.linalg.norm(vel)
 
-            cos_v_d = np.dot(vel,dire_vec)/(v_i*d + 1e-3)
-            r_near = abs(2*v_i/self.velocity_max_agent)*cos_v_d
+            pos_target = self.positions[-1]
+            dire_vec = pos_target - pos
+            d = np.linalg.norm(dire_vec)
+
+            cos_v_d = np.dot(vel, dire_vec) / (velNorm * d + 1e-3)
+            r_near = abs(2 * velNorm / self.velocity_max_agent) * cos_v_d
             # r_near = min(abs(v_i/self.v_max)*1.0/(d + 1e-5),10)/5
             rewards[i] += mu1 * r_near # TODO: if not get nearer then receive negative reward
         
@@ -175,25 +179,28 @@ class Env:
         Sum_S = S1 + S2 + S3
         Sum_d = d1 + d2 + d3
         Sum_last_d = sum(last_d)
+
+        def isClose(a, b):
+            return np.abs(a - b) < 1e-4
+
         # 3.1 reward for target UAV:
         rewards[-1] += np.clip(10 * (Sum_d - Sum_last_d),-2,2)
-        # print(rewards[-1])
         # 3.2 stage-1 track
-        if Sum_S > S4 and Sum_d >= d_limit and all(d >= d_capture for d in [d1, d2, d3]):
+        if Sum_S > S4 and Sum_d >= d_limit and all(d >= self.dist_capture for d in [d1, d2, d3]):
             r_track = - Sum_d/max([d1,d2,d3])
             rewards[0:2] += mu3*r_track
         # 3.3 stage-2 encircle
-        elif Sum_S > S4 and (Sum_d < d_limit or any(d >= d_capture for d in [d1, d2, d3])):
+        elif Sum_S > S4 and (Sum_d < d_limit or any(d >= self.dist_capture for d in [d1, d2, d3])):
             r_encircle = -1/3*np.log(Sum_S - S4 + 1)
             rewards[0:2] += mu3*r_encircle
         # 3.4 stage-3 capture
-        elif Sum_S == S4 and any(d > d_capture for d in [d1,d2,d3]):
+        elif Sum_S == S4 and any(d > self.dist_capture for d in [d1,d2,d3]):
             r_capture = np.exp((Sum_last_d - Sum_d)/(3*self.velocity_max_agent))
             rewards[0:2] += mu3*r_capture
-        
+
         ## 4 finish rewards
-        if Sum_S == S4 and all(d <= d_capture for d in [d1,d2,d3]):
-            rewards[0:2] += mu4*10
+        if isClose(Sum_S, S4) and all(d <= self.dist_capture for d in [d1,d2,d3]):
+            rewards[0:2] += ratio_capture * 10
             dones = [True] * self.num_agents
 
         return rewards, dones

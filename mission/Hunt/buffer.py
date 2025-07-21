@@ -81,3 +81,4 @@ class MultiAgentReplayBuffer:
     def ready(self):
         if self.mem_cntr >= self.batch_size:
             return True
+        return False

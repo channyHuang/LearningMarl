@@ -1,6 +1,7 @@
-import torch as T
-from networks import ActorNetwork, CriticNetwork
 import numpy as np
+import torch
+
+from networks import ActorNetwork, CriticNetwork
 
 class Agent:
     def __init__(self, actor_dims, critic_dims, n_actions, n_agents, agent_idx, chkpt_dir,
@@ -26,7 +27,7 @@ class Agent:
         self.update_network_parameters(tau=1)
 
     def choose_action(self, observation, time_step, evaluate=False):
-        state = T.tensor([observation], dtype=T.float).to(self.actor.device)
+        state = torch.tensor([observation], dtype=torch.float).to(self.actor.device)
         actions = self.actor.forward(state)
 
         # exploration
@@ -35,7 +36,7 @@ class Agent:
         decay_rate = 0.999995
 
         noise_scale = max(min_noise, max_noise * (decay_rate ** time_step))
-        noise = 2 * T.rand(self.n_actions).to(self.actor.device) - 1 # [-1,1)
+        noise = 2 * torch.rand(self.n_actions).to(self.actor.device) - 1 # [-1,1)
         if not evaluate:
             noise = noise_scale * noise
         else:

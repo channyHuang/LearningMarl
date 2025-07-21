@@ -1,13 +1,13 @@
 import os
-import torch as T
+import torch
 import torch.nn.functional as F
 
 from agent import Agent
 
 class MADDPG:
     def __init__(self, actor_dims, critic_dims, n_agents, n_actions, 
-                 scenario='simple',  alpha=0.01, beta=0.02, fc1=128, 
-                 fc2=128, gamma=0.99, tau=0.01, chkpt_dir='tmp/maddpg/'):
+                 scenario='models',  alpha=0.01, beta=0.02, fc1=128, 
+                 fc2=128, gamma=0.99, tau=0.01, chkpt_dir='./'):
         self.agents = []
         self.n_agents = n_agents
         self.n_actions = n_actions
@@ -45,30 +45,30 @@ class MADDPG:
 
         device = self.agents[0].actor.device
 
-        states = T.tensor(states, dtype=T.float).to(device)
-        actions = T.tensor(actions, dtype=T.float).to(device)
-        rewards = T.tensor(rewards, dtype=T.float).to(device)
-        states_ = T.tensor(states_, dtype=T.float).to(device)
-        dones = T.tensor(dones).to(device)
+        states = torch.tensor(states, dtype=torch.float).to(device)
+        actions = torch.tensor(actions, dtype=torch.float).to(device)
+        rewards = torch.tensor(rewards, dtype=torch.float).to(device)
+        states_ = torch.tensor(states_, dtype=torch.float).to(device)
+        dones = torch.tensor(dones).to(device)
 
         all_agents_new_actions = []
         old_agents_actions = []
     
         for agent_idx, agent in enumerate(self.agents):
 
-            new_states = T.tensor(actor_new_states[agent_idx], 
-                                dtype=T.float).to(device)
+            new_states = torch.tensor(actor_new_states[agent_idx], 
+                                dtype=torch.float).to(device)
 
             new_pi = agent.target_actor.forward(new_states)
 
             all_agents_new_actions.append(new_pi)
             old_agents_actions.append(actions[agent_idx])
 
-        new_actions = T.cat([acts for acts in all_agents_new_actions], dim=1)
-        old_actions = T.cat([acts for acts in old_agents_actions],dim=1)
+        new_actions = torch.cat([acts for acts in all_agents_new_actions], dim=1)
+        old_actions = torch.cat([acts for acts in old_agents_actions],dim=1)
 
         for agent_idx, agent in enumerate(self.agents):
-            with T.no_grad():
+            with torch.no_grad():
                 critic_value_ = agent.target_critic.forward(states_, new_actions).flatten()
                 target = rewards[:,agent_idx] + (1-dones[:,0].int())*agent.gamma*critic_value_
 
@@ -80,10 +80,10 @@ class MADDPG:
             agent.critic.optimizer.step()
             agent.critic.scheduler.step()
 
-            mu_states = T.tensor(actor_states[agent_idx], dtype=T.float).to(device)
+            mu_states = torch.tensor(actor_states[agent_idx], dtype=torch.float).to(device)
             oa = old_actions.clone()
             oa[:,agent_idx*self.n_actions:agent_idx*self.n_actions+self.n_actions] = agent.actor.forward(mu_states)            
-            actor_loss = -T.mean(agent.critic.forward(states, oa).flatten())
+            actor_loss = -torch.mean(agent.critic.forward(states, oa).flatten())
             agent.actor.optimizer.zero_grad()
             actor_loss.backward(retain_graph=True)
             agent.actor.optimizer.step()

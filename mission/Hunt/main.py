@@ -57,10 +57,7 @@ if __name__ == '__main__':
         episode_step = 0
         while not any(dones):
             if evaluate:
-                env_render = env.render()
-                # if episode_step % 10 == 0:
-                #     cv2.imshow('result', env_render)
-                #     cv2.waitKey(1)
+                env.render()
 
             actions = maddpg_agents.choose_action(obs,total_steps,evaluate)
             obs_, rewards, dones = env.step(actions)
