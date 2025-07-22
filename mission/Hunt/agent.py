@@ -10,7 +10,7 @@ class Agent:
         self.gamma = gamma
         self.tau = tau
         self.n_actions = n_actions
-        self.agent_name = 'agent_%s' % agent_idx
+        self.agent_name = f'agent_{agent_idx}'
         self.actor = ActorNetwork(alpha, actor_dims, fc1, fc2, n_actions, 
                                   chkpt_dir=chkpt_dir,  name=self.agent_name+'_actor')
         self.critic = CriticNetwork(beta, critic_dims, 
@@ -35,13 +35,10 @@ class Agent:
         min_noise = 0.01
         decay_rate = 0.999995
 
-        noise_scale = max(min_noise, max_noise * (decay_rate ** time_step))
+        noise_scale = 0 if evaluate else max(min_noise, max_noise * (decay_rate ** time_step)) 
         noise = 2 * torch.rand(self.n_actions).to(self.actor.device) - 1 # [-1,1)
-        if not evaluate:
-            noise = noise_scale * noise
-        else:
-            noise = 0 * noise
-        
+        noise = noise_scale * noise
+
         action = actions + noise
         action_np = action.detach().cpu().numpy()[0]
         magnitude = np.linalg.norm(action_np)

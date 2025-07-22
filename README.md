@@ -60,8 +60,9 @@ stable_baselines3中有PPO、SAC等模型可直接使用，不像pettingzoo还�
 见`mission/Surround.py`自定义生成网格地图，想要多个智能体遍历所有网格，但覆盖率只有50%+，一直在重复......
 
 ![Surround.py](results/Surround.gif)
+
 ### Hunt 
-参考[MADDPG_Multi_UAV_Roundup](https://github.com/reinshift/MADDPG_Multi_UAV_Roundup.git)
+参考[MADDPG_Multi_UAV_Roundup](https://github.com/reinshift/MADDPG_Multi_UAV_Roundup.git)和
 [KF_AA_MARL](https://github.com/reinshift/KF_AA_MARL.git)
 
 ## 问题

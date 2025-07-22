@@ -1,9 +1,9 @@
-import numpy as np
-import itertools
 from gymnasium import spaces
-import copy
-import time
+import itertools
+import numpy as np
+import os
 import pygame
+import time
 
 from math_tool import *
 
@@ -13,17 +13,18 @@ class Obstacle():
         self.radius = np.random.uniform(0.05 * boundary, 0.075 * boundary)
 
 class Env:
-    def __init__(self, boundary = 2, 
-                num_obstacles = 3, 
+    def __init__(self, 
                 num_agents = 4,
                 num_targets = 1,
-                laser_length = 0.2,
-                num_lasers = 16):
-        self.boundary = boundary
-        self.num_obstacles = num_obstacles
+                num_obstacles = 3,
+                num_lasers = 16, 
+                boundary = 2, 
+                laser_length = 0.2):
         self.num_agents = num_agents
         self.num_targets = num_targets
+        self.num_obstacles = num_obstacles
         self.num_lasers = num_lasers
+        self.boundary = boundary
         self.laser_length = laser_length if laser_length is not None else 0.1 * self.boundary
         self.step_length = 0.25 * self.boundary
         self.velocity_max_agent = 0.05 * self.boundary
@@ -33,7 +34,7 @@ class Env:
         self.agents_name = []
         self.action_space = {}
         # agent: num_features 4 + (num_agents - 1) * 2 + self lasers 16
-        # target: num_
+        # target: num_features 2 + num_targets + self lasers 16
         self.observation_space = {}
         for i in range(self.num_agents):
             if i < self.num_agents - self.num_targets:
@@ -48,13 +49,13 @@ class Env:
                 self.observation_space[name] = spaces.Box(low = -np.inf, high = np.inf, shape = (23, ))
         self.obstacles = [Obstacle() for _ in range(self.num_obstacles)]
         self.laser_distances = [[self.laser_length for _ in range(self.num_lasers)] for _ in range(self.num_agents)] 
+        self.steps = 0
+        self.history_positions = [[] for _ in range(self.num_agents)]
 
         self.screen = None
         self.screen_size = 600
         self.scale = self.screen_size / self.boundary 
-        self.steps = 0
         self.icon_agent = None
-        self.history_positions = [[] for _ in range(self.num_agents)]
 
     def reset(self):
         self.steps = 0
@@ -80,7 +81,7 @@ class Env:
         for i in range(self.num_agents):
             position = self.positions[i]
             velocity = self.velocities[i]
-            # self status
+            # self status [0, 1]
             status = [position[0] / self.boundary, position[1] / self.boundary, velocity[0] / self.velocity_max_agent, velocity[1] / self.velocity_max_agent]
             # teamers status
             status_teamers = []
@@ -131,6 +132,18 @@ class Env:
         return observations, rewards, dones
 
     def calRewards(self, IsCollied, last_d):
+        # dist2target = []
+        # for i in range(self.num_agents - self.num_targets):
+        #     position = self.positions[i]
+        #     minDist = np.inf
+        #     if i < self.num_agents - self.num_targets:
+        #         for j in range(self.num_agents - self.num_targets, self.num_agents):
+        #             posTarget = self.positions[j]
+        #             dist = np.linalg.norm(posTarget - position)
+        #             if dist < minDist:
+        #                 minDist = dist
+        #         dist2target.append(minDist)
+
         dones = [False] * self.num_targets
         rewards = np.zeros(self.num_agents)
         mu1 = 0.7 # r_near
@@ -139,7 +152,7 @@ class Env:
         ratio_capture = 5 # r_finish
         d_limit = 0.75
 
-        ## 1 reward for single rounding-up-UAVs:
+        ## 1 reward for single hunter:
         for i in range(self.num_agents - self.num_targets):
             pos = self.positions[i]
             vel = self.velocities[i]
@@ -150,21 +163,19 @@ class Env:
             d = np.linalg.norm(dire_vec)
 
             cos_v_d = np.dot(vel, dire_vec) / (velNorm * d + 1e-3)
-            r_near = abs(2 * velNorm / self.velocity_max_agent) * cos_v_d
-            # r_near = min(abs(v_i/self.v_max)*1.0/(d + 1e-5),10)/5
-            rewards[i] += mu1 * r_near # TODO: if not get nearer then receive negative reward
+            r_near = 2 * velNorm / self.velocity_max_agent * cos_v_d
+            rewards[i] += mu1 * r_near
         
-        ## 2 collision reward for all UAVs:
+        ## 2 collision reward for all:
         for i in range(self.num_agents):
             if IsCollied[i]:
                 r_safe = -10
             else:
                 lasers = self.agent_lasers[i]
-                # r_safe = (min(lasers) - self.L_sensor - 0.1)/self.L_sensor
                 r_safe = (min(lasers) - self.laser_length - 0.1)/self.laser_length
             rewards[i] += mu2 * r_safe
 
-        ## 3 multi-stage's reward for rounding-up-UAVs
+        ## 3 multi-stage's reward for rounding-up
         p0 = self.positions[0]
         p1 = self.positions[1]
         p2 = self.positions[2]
@@ -183,7 +194,7 @@ class Env:
         def isClose(a, b):
             return np.abs(a - b) < 1e-4
 
-        # 3.1 reward for target UAV:
+        # 3.1 reward for target:
         rewards[-1] += np.clip(10 * (Sum_d - Sum_last_d),-2,2)
         # 3.2 stage-1 track
         if Sum_S > S4 and Sum_d >= d_limit and all(d >= self.dist_capture for d in [d1, d2, d3]):
@@ -235,7 +246,7 @@ class Env:
             self.clock = pygame.time.Clock()
             self.font = pygame.font.SysFont(None, 36)
 
-            icon_agent = pygame.image.load("UAV.png").convert_alpha()
+            icon_agent = pygame.image.load("car.png").convert_alpha()
             self.icon_agent = pygame.transform.scale(icon_agent, (20, 20))
 
         self.screen.fill((255, 255, 255))
@@ -251,7 +262,8 @@ class Env:
             pos = self.positions[i]
             self.history_positions[i].append( self._scale_position(pos) )
             if i < self.num_agents - self.num_targets:
-                self.screen.blit(self.icon_agent, self._scale_position(pos))
+                hunter_pos = self._scale_position(pos)
+                self.screen.blit(self.icon_agent, (hunter_pos[0] - 10, hunter_pos[1] - 10))
             else:
                 pygame.draw.circle(self.screen, (255, 0, 0), self._scale_position(pos), 8)
 
@@ -263,6 +275,8 @@ class Env:
         self.screen.blit(step_text, (10, 10))
 
         if bSave:
+            if not os.path.exists('frames'):
+                os.makedirs('frames')
             pygame.image.save(self.screen, f"frames/{self.steps:04d}.png")
 
         pygame.display.flip()

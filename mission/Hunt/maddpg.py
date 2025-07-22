@@ -32,7 +32,7 @@ class MADDPG:
     def choose_action(self, raw_obs, time_step, evaluate):# timestep for exploration
         actions = []
         for agent_idx, agent in enumerate(self.agents):
-            action = agent.choose_action(raw_obs[agent_idx],time_step, evaluate)
+            action = agent.choose_action(raw_obs[agent_idx], time_step, evaluate)
             actions.append(action)
         return actions
 

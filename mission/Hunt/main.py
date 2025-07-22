@@ -4,12 +4,11 @@ import os
 import pandas as pd
 import time
 import warnings
+warnings.filterwarnings('ignore')
 
 from maddpg import MADDPG
 from Env import Env
 from buffer import MultiAgentReplayBuffer
-
-warnings.filterwarnings('ignore')
 
 def obs_list_to_state_vector(obs):
     state = np.hstack([np.ravel(o) for o in obs])
@@ -40,7 +39,7 @@ if __name__ == '__main__':
     score_history = []
     target_score_history = []
     evaluate = True
-    best_score = -30
+    best_score = -np.inf
 
     if evaluate:
         maddpg_agents.load_checkpoint()
@@ -84,7 +83,7 @@ if __name__ == '__main__':
         avg_score = np.mean(score_history[-100:])
         avg_target_score = np.mean(target_score_history[-100:])
         if not evaluate:
-            if i % PRINT_INTERVAL == 0 and i > 0 and avg_score > best_score:
+            if i > 0 and avg_score > best_score:
                 print('New best score',avg_score ,'>', best_score, 'saving models...')
                 maddpg_agents.save_checkpoint()
                 best_score = avg_score
